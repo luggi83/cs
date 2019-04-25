@@ -1,0 +1,5 @@
+shopt -s nullglob
+
+for f in $lukasbindir/bash/completions/*; do
+  [ -f "$f" ] && . "$f"
+done

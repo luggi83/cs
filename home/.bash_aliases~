@@ -1,0 +1,231 @@
+function curl-execute(){
+curl -L "$1" | bash
+}
+function nanosource(){
+nano "$1"
+source "$1"
+}
+function _touch (){
+sudo touch "$1"
+sudo chown $USER:$GROUP "$1"
+}
+function _mkdir(){
+sudo mkdir "$1"
+sudo chown $USER:$GROUP "$1"
+}
+function _nano(){
+sudo touch "$1"
+sudo chown $USER:$GROUP "$1"
+nano "$1"
+}
+function apt-s(){
+sudo aptitude install -y  $(apt-cache search "$1" | peco | cut -f1 -d" " )
+}
+function apt-p(){
+sudo aptitude purge  $(apt list --installed  | peco | cut -f1 -d"\/" )
+}
+alias npi='/home/lukas/n/bin/npminstall -g '
+alias npu='/home/lukas/n/bin/npmuninstall -g '
+alias mount-Software="mount-encrypted /mnt/csdata/Software"
+alias lsp="ls | peco --exec 'tmux set-buffer "$1"'"
+alias venva='source venv/bin/activate'
+alias dotfiles='/usr/bin/git --git-dir=/home/lukas/.myconf/ --work-tree=/home/lukas'
+alias rmf='sudo rm -rf '
+alias xx="chmod +x"
+alias _="sudo env "PATH=$PATH:/usr/games" "
+xxnano() { nano "$1"; chmod +x "$1";  }
+alias ygu="yarn global upgrade-interactive"
+alias ygr="yarn global remove"
+alias ygl="yarn global list"
+alias yga="yarn global add"
+alias pomo='muccadoro | tee -ai ~/pomodoros.txt'
+alias renamer="qmv --format=destination-only"
+docker-enter() { docker exec -it "$@" /bin/bash ||  docker exec -it "$@" /bin/sh; }
+gcl_port_set() { gcloud compute firewall-rules update port8200 --allow=tcp:"$@"; }
+alias gcl_port_get='gcloud compute firewall-rules describe port8200'
+gc(){  local tgt; tgt=$(command git clone "$@" 2> >(tee /dev/stderr |head -n1 | cut -d \' -f2)) || return $?; cd "$tgt"; }
+alias md5-pw='echo -n '$1' | md5sum -'
+alias pw-gen='date | md5sum'
+alias sreboot='sudo fdesetup authrestart'
+alias tmu='tmux attach -t0'
+alias listmp3='find -name "*.mp3" -exec mp3info {} -p "%F: %r kbps\n" \; | sort | sed "/96 kbps/d"'
+alias sano='sudo nano'
+alias sumount='sudo umount'
+alias cargo-env='source $HOME/.cargo/env'
+#alias ls='exa'
+alias cat='bat'
+#alias l='lsd -a'
+alias lt='lsd --tree'
+alias lsl='lsd -lah'
+alias psg='ps aux | grep'
+alias slog='tail -f /var/log/syslog'
+alias rl_apache='sudo service apache restart'
+alias filebot='/usr/filebot/filebot.sh'
+alias kick='tmux detach -a'
+alias reboot='sudo reboot'
+alias suser='sudo service'
+alias apk='sudo apk'
+alias untar="tar -xvf"
+alias _chown='sudo chown -R $USER:$GROUP '
+alias _chown-www='sudo chown -R www-data /var/www/ '
+alias _chmod='sudo chmod -R 777 '
+alias rss='automatic -f -o'
+alias ssx='export DISPLAY=:0; ssh -C -X -c aes128-ctr'
+alias rsyncfast='rsync -rv --progress --size-only -e "ssh -c arcfour" '
+alias rsyncwebdav='/usr/bin/rsync --size-only --no-whole-file --inplace --bwlimit=250 -rv --progress'
+alias suw='cd /var/www; sudo su www-data'
+alias dco='docker-compose'
+alias chown-dl="sudo chown -R lukas:lukas /home/lukas/Downloads"
+alias chown-docker="sudo chown -R lukas:lukas /home/lsudo ukas/docker*"
+alias saptitude='sudo aptitude'
+alias apt-i='sudo aptitude install'
+alias apt-p='sudo aptitude purge'
+alias apt-add-key="sudo apt-key adv --keyserver hkp://keys.gnupg.net --recv-keys"
+alias apt-installed='apt list --installed | grep $1'
+alias apt-available='apt list --all-versions | grep $1 '
+alias checkinstall-noinstall='sudo checkinstall --install=no '
+# | cut -f1 -d"/" '
+# FUNCTIONS
+
+#transfer
+function transfer() { if [ $# -eq 0 ]; then echo -e "No arguments specified. Usage:\necho transfer /tmp/test.md\ncat /tmp/test.md | transfer test.md"; return 1; fi
+tmpfile=$( mktemp -t transferXXX ); if tty -s; then basefile=$(basename "$1" | sed -e 's/[^a-zA-Z0-9._-]/-/g'); curl --progress-bar --upload-file "$1" "https://transfer.sh/$basefile" >> $tmpfile; else curl --progress-bar --upload-file "-" "https://transfer.sh/$1" >> $tmpfile ; fi; cat $tmpfile | ssh $homepc pbcopy | sleep 1; echo -n "URL shd have copied, URL is: "; cat $tmpfile ; echo; rm -f $tmpfile; }
+
+# find and terminate processes
+# FIND PROCESS
+function p(){
+        ps aux | grep -i $1 | grep -v grep
+}
+function ka(){
+    cnt=$( p $1 | wc -l)  # total count of processes found
+    klevel=${2:-15}       # kill level, defaults to 15 if argument 2 is empty
+    echo -e "\nSearching for '$1' -- Found" $cnt "Running Processes .. "
+    p $1
+    echo -e '\nTerminating' $cnt 'processes .. '
+    ps aux  |  grep -i $1 |  grep -v grep   | awk '{print $2}' | xargs sudo kill
+    echo -e "Done!\n"
+    echo "Running search again:"
+    p "$1"
+    echo -e "\n"
+}
+
+
+## extract-and-delete all
+
+# configure a default mount server. invoke `mnt` will mount this server
+DEFAULT=cs2:
+# prefix to be applied to the mount point. see MOUNT_POINT below
+MOUNT_POINT_PREFIX=
+# where to put the mounting folder? This is /Volumes on Mac OS X
+if [[ `uname` == 'Darwin' ]]; then
+MOUNT_POINT_HOME=/Volumes
+else
+MOUNT_POINT_HOME=/mnt
+fi
+
+function sshfs-mnt {
+	if [ $# == 0 ]
+	then
+		NODE=$DEFAULT
+	else
+		NODE=$1
+	fi
+	# is hostname fully qualified?
+	if [ ${NODE%%.*} == $NODE ]
+	then
+		VOL=${NODE%:}
+	else
+		VOL=${NODE%%.*}
+	fi
+	# remove username if present
+	VOL=${VOL#*@}
+	# removing trailing slash
+	NODE=${NODE%/}
+	# is slash in $NODE? (are we mounting a non-default folder?)
+	if [ "${NODE#*/}" == "$NODE" ]
+	then
+		# no slash. set the folder
+		# making sure NODE ends with colon
+		if [ "${NODE%:}" == "$NODE" ]
+		then
+			NODE=$NODE:
+		fi
+	else
+		# use the folder name as volumn name
+		VOL=${NODE##*/}
+		# also making sure colon is present
+		HOST=${NODE%%/*}
+		NODE=${HOST%:}:/${NODE#*/}
+	fi
+
+	MOUNT_POINT=$MOUNT_POINT_HOME/$MOUNT_POINT_PREFIX$VOL
+	echo "mounting $NODE on $MOUNT_POINT..."
+
+	if ! (stat $MOUNT_POINT 2>/dev/null | grep staff &> /dev/null)
+	then
+		mkdir -p $MOUNT_POINT
+		sshfs $NODE $MOUNT_POINT 2>&1 | grep -v 'nodelay'
+	fi
+
+	if [[ `uname` == 'Darwin' ]]; then
+	open $MOUNT_POINT
+	fi
+
+}
+
+
+# function for .bashrc to facilitate (extraction of archive|archiving of file)
+# extract based on the file extension.
+function extractrm(){
+	if [ -f $1 ] ; then
+		case $1 in
+		  *.tar.bz2)   tar xvjf $1 && rm $1    ;;
+			*.tar.gz)    tar xvzf $1 && rm $1     ;;
+			*.bz2)       bunzip2 $1 && rm $1      ;;
+			*.rar)       unrar x $1  && rm $1     ;;
+			*.gz)        gunzip $1  && rm $1      ;;
+			*.tar)       tar xvf $1  && rm $1     ;;
+			*.tbz2)      tar xvjf $1  && rm $1    ;;
+			*.tgz)       tar xvzf $1   && rm $1   ;;
+			*.zip)       unzip $1  && rm $1       ;;
+			*.Z)         uncompress $1  && rm $1  ;;
+			*.7z)        7z x $1   && rm $1       ;;
+			*.xz)        unxz $1   && rm $1       ;;
+			*)           echo "'$1' cannot be extracted via >extract<" ;;
+		esac
+	else
+		echo "'$1' is not a valid file!"
+	fi
+
+}
+
+function extract(){
+	if [ -f $1 ] ; then
+		case $1 in
+		  *.tar.bz2)   tar xvjf $1     ;;
+			*.tar.gz)    tar xvzf $1     ;;
+			*.bz2)       bunzip2 $1      ;;
+			*.rar)       unrar x $1      ;;
+			*.gz)        gunzip $1       ;;
+			*.tar)       tar xvf $1      ;;
+			*.tbz2)      tar xvjf $1     ;;
+			*.tgz)       tar xvzf $1     ;;
+			*.zip)       unzip $1        ;;
+			*.Z)         uncompress $1   ;;
+			*.7z)        7z x $1         ;;
+			*.xz)        unxz $1        ;;
+			*)           echo "'$1' cannot be extracted via >extract<" ;;
+		esac
+	else
+		echo "'$1' is not a valid file!"
+	fi
+}
+
+# creates an archive (*.tar.gz) from given directory.
+function maketar() { tar cvzf "$(basename $1).tar.gz"  "${1%%/}/"; echo "File is now available: " "$(basename $1).tar.gz" ; }
+
+# create a ZIP archive of a file or folder.
+function makezip() { zip -r "$(basename $1).zip" "$1"; echo "File is now available: " "$(basename $1).zip" ; }
+function make7z() { 7z a "$(basename $1).7z" "$1"; echo "File is now available: " "$(basename $1).zip" ; }
+alias nmaps='sudo nmap -p 10-20000 '
+alias dotdrop=/home/lukas/dotfiles/dotdrop.sh --cfg=/home/lukas/dotfiles/config.yaml

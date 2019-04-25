@@ -1,0 +1,4 @@
+
+for bcfile in $lukasbindir/bash/completions/* ; do
+  [ -f "$bcfile" ] && . $bcfile
+done
